@@ -30,6 +30,10 @@ def ping(cmd: commands.Ping):
 def source(ctx: Context):
     return "https://github.com/HazemMeqdad/embed-bot", True
 
+@interactions.command(commands.Invite)
+def invite(ctx: Context):
+    return f"https://discord.com/api/oauth2/authorize?client_id={interactions._app_id}&permissions=49152&scope=bot%20applications.commands", True
+
 random_code = lambda: "".join(random.choices(string.ascii_letters + string.digits, k=6))
 
 @interactions.command(commands.Create)
@@ -65,6 +69,8 @@ def help(ctx: Context):
     embed = Embed(title="Help command", description="This is a help command for this bot\n\n")
     # Help command with sub commands and metion the code with id
     for cmd in cmds:
+        if cmd.type != ApplicationCommandType.CHAT_INPUT:
+            continue 
         # Sub commands
         if cmd.options and 1 in [i.type.value for i in cmd.options]:
             for sub_cmd in cmd.options:

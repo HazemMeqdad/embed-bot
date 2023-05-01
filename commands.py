@@ -20,3 +20,6 @@ class Help(Command):
 class Source(Command):
     """Show the bot source code"""
 
+class Invite(Command):
+    """Show the bot invite link"""
+
