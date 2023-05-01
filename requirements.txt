@@ -1,0 +1,2 @@
+flask
+git+https://github.com/HazemMeqdad/discord-interactions.py.git
