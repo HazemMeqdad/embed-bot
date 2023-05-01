@@ -4,10 +4,13 @@ import commands
 import string 
 import random
 from discord_interactions.flask_ext import CommandContext as Context
+from discord_interactions.flask_ext import CommandData
 from discord_interactions import (
     InteractionResponse, 
     InteractionApplicationCommandCallbackData, 
-    InteractionCallbackType
+    InteractionCallbackType,
+    ApplicationCommandType,
+    ApplicationCommand
 )
 from utlits import compiler_json_data
 from database.client import UrlsDatabase
@@ -33,10 +36,7 @@ random_code = lambda: "".join(random.choices(string.ascii_letters + string.digit
 def create(ctx: Context):
     ...
 
-@create.subcommand()
-def embed(ctx: Context, cmd: commands.CreateEmbed):
-    code = cmd.code
-    data = cmd.data
+def create_embed(data: str, code: str):
     code = code if code else random_code()
     if not data:
         return "Please give me a data, use this site https://discohook.org/ to make a embed data\nCopy only one embed Just"
@@ -47,6 +47,13 @@ def embed(ctx: Context, cmd: commands.CreateEmbed):
         return "This url already exists"
     UrlsDatabase.push_url(clean_code, code)
     return os.getenv("HOST") + code
+
+@create.subcommand()
+def embed(ctx: Context, cmd: commands.CreateEmbed):
+    code = cmd.code
+    data = cmd.data
+    return create_embed(data, code)
+
 
 @create.fallback
 def create_fallback(_: Context):
@@ -71,6 +78,22 @@ def help(ctx: Context):
             embeds=[embed]
         ),
     )
+
+def make_embed_context_menu(ctx: Context):
+    code = random_code()
+    data = list(ctx.interaction.data.resolved.messages.values())[0].content
+    return create_embed(data, code)
+
+# Register message command
+interactions._commands["Make Embed"] = CommandData(
+    name="Make Embed",
+    cb=make_embed_context_menu,
+    cmd=ApplicationCommand(
+        name="Make Embed", 
+        description=None, 
+        type=ApplicationCommandType.MESSAGE.value
+    )
+)
 
 if __name__ == "__main__":
     interactions.run("0.0.0.0", os.getenv("PORT", 80))
