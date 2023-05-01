@@ -22,8 +22,8 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 import datetime
-from typing import Any, Dict, List, Mapping, Optional, Protocol, TYPE_CHECKING, TypeVar, Union, overload, TypedDict, NotRequired, Required, Literal
-
+from typing import Any, Dict, List, Mapping, Optional, Protocol, TYPE_CHECKING, TypeVar, Union, overload, TypedDict, Literal
+from typing_extensions import NotRequired, Required
 from .colour import Colour
 
 # fmt: off
