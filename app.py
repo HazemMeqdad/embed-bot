@@ -19,7 +19,10 @@ try:
     load_dotenv()
 except:
     pass
-
+import requests
+from bs4 import BeautifulSoup
+import re
+import json
 interactions = App(os.environ['CLIENT_PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True)
 
 @interactions.command
@@ -90,6 +93,63 @@ def make_embed_context_menu(ctx: Context):
     data = list(ctx.interaction.data.resolved.messages.values())[0].content
     return create_embed(data, code)
 
+
+#Get Embeds From All The Links 
+def get_embed_context_menu(ctx: Context):
+    print("Start")
+    message = list(ctx.interaction.data.resolved.messages.values())[0].content
+    if not message:
+        return "No message content"
+    url_pattern = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\)])+(?<![),]))"
+    urls = re.findall(url_pattern, message)
+    embed_list = []
+    for url in urls:
+        #print(url)
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                title_tag = soup.find("meta", property="og:title")
+                title = title_tag["content"] if title_tag else None
+
+                image_tag = soup.find("meta", property="og:image")
+                image = image_tag["content"] if image_tag else None
+
+                url_tag = soup.find("meta", property="og:url")
+                url_ = url_tag["content"] if url_tag else None
+
+                description_tag = soup.find("meta", property="og:description")
+                description = description_tag["content"] if description_tag else None
+
+                author_tag = soup.find("meta", property="og:site_name")
+                author = author_tag["content"] if author_tag else None
+
+                color_tag = soup.find("meta", property="theme-color")
+                color = color_tag["content"] if color_tag else 0
+
+                if title or image or url_ or description or author or color:
+                    embed_data = {
+                        "title": title,
+                        "url": url_,
+                        "description": description,
+                        "author": author,
+                        "color": color,
+                        "thumbnail": {
+                            "url": image
+                        }
+                    }
+                    embed_list.append(embed_data)
+        except (requests.RequestException, KeyError):
+            print(f"Error occurred while fetching embed information for {url}")
+
+    if embed_list:
+        json_data = json.dumps(embed_list, indent=4) #Make it easy to Read 
+        code_block = "```json\n" + json_data + "\n```"
+        return code_block
+    else:
+        return "There are no embeds in this message"
+
+
 # Register message command
 interactions._commands["Make Embed"] = CommandData(
     name="Make Embed",
@@ -100,6 +160,14 @@ interactions._commands["Make Embed"] = CommandData(
         type=ApplicationCommandType.MESSAGE.value
     )
 )
-
+interactions._commands["Get Embed"] = CommandData(
+    name="Get Embed",
+    cb=get_embed_context_menu,
+    cmd=ApplicationCommand(
+        name="Get Embed", 
+        description=None, 
+        type=ApplicationCommandType.MESSAGE.value
+    )
+)
 if __name__ == "__main__":
-    interactions.run("0.0.0.0", os.getenv("PORT", 80))
+    interactions.run("0.0.0.0", os.getenv("PORT", 443))
