@@ -134,7 +134,7 @@ def get_embed_context_menu(ctx: Context):
                         "description": description,
                         "author": author,
                         "color": color,
-                        "thumbnail": {
+                        "image": {
                             "url": image
                         }
                     }
