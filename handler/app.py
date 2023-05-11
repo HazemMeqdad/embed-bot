@@ -10,28 +10,9 @@ from database.client import UrlsDatabase
 # context.load_cert_chain('/etc/letsencrypt/live/kmcoders.com-0001/fullchain.pem', '/etc/letsencrypt/live/kmcoders.com-0001/privkey.pem')
 import json
 # i try to use all otg meta code i stil work on it 
-CODES = {
-    "title": "<meta content=\"{0}\" property=\"og:title\" />",
-    "image": "<meta content=\"{0}\" property=\"og:image\" />",  # small image
-    "thumbnail": "<meta content=\"{0}\" property=\"og:image\" />",
-    "url": "<meta content=\"{0}\" property=\"og:url\" />",
-    "description": "<meta content=\"{0}\" property=\"og:description\" />",
-    "author": "<meta content=\"{0}\" property=\"og:site_name\" />",
-    "color": "<meta content=\"{0}\" name=\"theme-color\" />",
-    "site": "<meta content=\"{0}\" property=\"og:site\" />",
-    "type": "<meta content=\"{0}\" property=\"og:type\" />",
-    "audio": "<meta content=\"{0}\" property=\"og:audio\" />",
-    "video": "<meta content=\"{0}\" property=\"og:video\" />",
-    "locale": "<meta content=\"{0}\" property=\"og:locale\" />",
-    "locale:alternate": "<meta content=\"{0}\" property=\"og:locale:alternate\" />",
-    "restrictions:age": "<meta content=\"{0}\" property=\"og:restrictions:age\" />",
-    "restrictions:age:allowed": "<meta content=\"{0}\" property=\"og:restrictions:age:allowed\" />",
-    "restrictions:age:content": "<meta content=\"{0}\" property=\"og:restrictions:age:content\" />",
-    "see_also": "<meta content=\"{0}\" property=\"og:see_also\" />",
-    "determiner": "<meta content=\"{0}\" property=\"og:determiner\" />",
-    "availability": "<meta content=\"{0}\" property=\"og:availability\" />",
-    "tag": "<meta content=\"{0}\" property=\"og:tag\" />",
-}
+import requests 
+from PIL import Image
+import io
 
 int_to_hex = lambda x: '#{0:06X}'.format(x)
 
@@ -41,31 +22,51 @@ class App(Interactions):
     def __init__(self, client_public_key: str, application_id: str, *args, **kwargs):
         super().__init__(App.app, client_public_key, path="/interactions", app_id=application_id)
 
-    # a bettter OGP Meta code builder 
+    @staticmethod
+    def get_image_dimensions(url):
+        try:
+            response = requests.get(url)
+            img_data = io.BytesIO(response.content)
+            image = Image.open(img_data)
+            return image.width, image.height
+        except:
+            return None, None
+
     @app.route("/<code>")
     def index(code):
-        data = UrlsDatabase.get_url(code)
-        if not data:
+        embed_data = UrlsDatabase.get_url(code)
+        if not embed_data:
             return ""
-        html_code = "<meta name=\"twitter:card\" content=\"summary\">\n"
-        html_code += "<meta property=\"og:type\" content=\"website\">\n"
-        for key, value in data.items():
-            if key not in CODES.keys():
-                continue
-            if key == "thumbnail" or key == "image":
-                if isinstance(value, dict) and "url" in value:
-                    html_code += CODES[key].format(value["url"].replace("\"", "\\\"")) + "\n"
-            elif key == "author":
-                if isinstance(value, dict) and "name" in value:
-                    html_code += CODES[key].format(value["name"].replace("\"", "\\\"")) + "\n"
-            elif key == "color":
-                if isinstance(value, int):
-                    html_code += CODES[key].format(int_to_hex(value)) + "\n"
-            else:
-                if isinstance(value, str):
-                    html_code += CODES[key].format(value.replace("\"", "\\\"")) + "\n"
-                else:
-                    html_code += CODES[key].format(value) + "\n"
+        html_code = "<meta name=\"twitter:card\" content=\"summary_large_image\">\n"
+        html_code += "<meta property=\"og:type\" content=\"object\">\n"
+
+        if "title" in embed_data:
+            html_code += "<meta property=\"og:title\" content=\"{}\">\n".format(embed_data["title"])
+            html_code += "<meta name=\"twitter:title\" content=\"{}\">\n".format(embed_data["title"])
+
+        if "description" in embed_data:
+            html_code += "<meta property=\"og:description\" content=\"{}\">\n".format(embed_data["description"])
+            html_code += "<meta name=\"twitter:description\" content=\"{}\">\n".format(embed_data["description"])
+
+        if "color" in embed_data:
+            theme_color = int_to_hex(embed_data["color"])
+        else:
+            theme_color = "#ffffff"
+
+        html_code += "<meta name=\"theme-color\" content=\"{}\">\n".format(theme_color)
+
+        if "image" in embed_data and "url" in embed_data["image"]:
+            image_url = embed_data["image"]["url"]
+            image_width, image_height = App.get_image_dimensions(image_url)
+            html_code += "<meta property=\"og:image\" content=\"{}\">\n".format(image_url)
+            if image_width and image_height:
+                html_code += "<meta property=\"og:image:width\" content=\"{}\">\n".format(image_width)
+                html_code += "<meta property=\"og:image:height\" content=\"{}\">\n".format(image_height)
+            html_code += "<meta property=\"og:image:alt\" content=\"{}\">\n".format(embed_data.get("description", "kmcoders"))
+
+        if "author" in embed_data and isinstance(embed_data["author"], dict) and "name" in embed_data["author"]:
+            html_code += "<meta property=\"og:site_name\" content=\"{}\">\n".format(embed_data["author"]["name"])
+            html_code += "<meta name=\"twitter:site\" content=\"{}\">\n".format(embed_data["author"]["name"])
         return html_code
 
     def run(self, *args, **kwargs):
