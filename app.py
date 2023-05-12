@@ -104,7 +104,7 @@ def help(ctx: Context):
 def make_embed_context_menu(ctx: Context):
     code = random_code()
     data = list(ctx.interaction.data.resolved.messages.values())[0].content
-    return 
+    return create_embed(data, code)
 
 def create_video_embed(ctx: Context):
     code = random_code()
@@ -168,7 +168,7 @@ def get_embed_context_menu(ctx: Context):
         return "**No embeds found in the provided in the message URLs.**"
 
 # Register message command
-interactions._commands["Make Embed"] = CommandData(
+interactions._commands["Create a discord embed"] = CommandData(
     name="Create a discord embed",
     cb=make_embed_context_menu,
     cmd=ApplicationCommand(
@@ -177,7 +177,7 @@ interactions._commands["Make Embed"] = CommandData(
         type=ApplicationCommandType.MESSAGE.value
     )
 )
-interactions._commands["Get Embed"] = CommandData(
+interactions._commands["Get a discord embed"] = CommandData(
     name="Get a discord embed",
     cb=get_embed_context_menu,
     cmd=ApplicationCommand(
@@ -196,4 +196,4 @@ interactions._commands["Create a video embed"] = CommandData(
     )
 )
 if __name__ == "__main__":
-    interactions.run("0.0.0.0", os.getenv("PORT", 80))
+    interactions.run("0.0.0.0", os.getenv("PORT", 572))
