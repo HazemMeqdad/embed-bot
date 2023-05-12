@@ -12,7 +12,7 @@ from discord_interactions import (
     ApplicationCommandType,
     ApplicationCommand
 )
-from utlits import compiler_json_data
+from utlits import compiler_json_data, video_compiler_json
 from database.client import UrlsDatabase
 try:
     from dotenv import load_dotenv
@@ -23,7 +23,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import json
-interactions = App(os.environ['CLIENT_PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True)
+interactions = App(os.environ['PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True, token=os.environ['TOKEN'])
 
 @interactions.command
 def ping(cmd: commands.Ping):
@@ -46,12 +46,24 @@ def create(ctx: Context):
 def create_embed(data: str, code: str):
     code = code if code else random_code()
     if not data:
-        return "Please give me a data, use this site https://discohook.org/ to make a embed data\nCopy only one embed Just"
+        return "**Please provide a valid JSON data or use the website \"https://discohook.org/\" to generate a single embed.**"
     clean_code = compiler_json_data(data)
     if clean_code is False:
-        return "This data is not a json Or wrong embed data"
+        return "**Invalid JSON data or incorrect embedded JSON format detected**"
     if UrlsDatabase.get_url(code):
-        return "This url already exists"
+        return "**This url with code || {} || already exists**".format(code)
+    UrlsDatabase.push_url(clean_code, code)
+    return os.getenv("HOST") + code
+
+def create_video_embed_data(data: str, code: str):
+    code = code if code else random_code()
+    if not data:
+        return "**Please provide a valid JSON data with this keys.**\n **[\'`title`\', \'`description`\', \'`video`\', \'`width`\', \'`height`\' \'`image`\']**"
+    clean_code = video_compiler_json(data)
+    if clean_code is False:
+        return "**Invalid JSON data or incorrect embedded JSON format detected use this keys to make a vaild data**\n **[\'`title`\', \'`description`\', \'`video`\', \'`width`\', \'`height`\' \'`image`\']**"
+    if UrlsDatabase.get_url(code):
+        return "**This url with code || {} || already exists**".format(code)
     UrlsDatabase.push_url(clean_code, code)
     return os.getenv("HOST") + code
 
@@ -88,13 +100,17 @@ def help(ctx: Context):
         ),
     )
 
+
 def make_embed_context_menu(ctx: Context):
     code = random_code()
     data = list(ctx.interaction.data.resolved.messages.values())[0].content
-    return create_embed(data, code)
+    return 
 
+def create_video_embed(ctx: Context):
+    code = random_code()
+    data = list(ctx.interaction.data.resolved.messages.values())[0].content
+    return create_video_embed_data(data=data, code=code)
 
-#Get Embeds From All The Links 
 def get_embed_context_menu(ctx: Context):
     print("Start")
     message = list(ctx.interaction.data.resolved.messages.values())[0].content
@@ -104,7 +120,6 @@ def get_embed_context_menu(ctx: Context):
     urls = re.findall(url_pattern, message)
     embed_list = []
     for url in urls:
-        #print(url)
         try:
             response = requests.get(url)
             if response.status_code == 200:
@@ -125,6 +140,7 @@ def get_embed_context_menu(ctx: Context):
                 author = author_tag["content"] if author_tag else None
 
                 color_tag = soup.find("meta", property="theme-color")
+                print(color_tag)
                 color = color_tag["content"] if color_tag else 0
 
                 if title or image or url_ or description or author or color:
@@ -149,27 +165,35 @@ def get_embed_context_menu(ctx: Context):
         code_block = "```json\n" + json_data + "\n```"
         return code_block
     else:
-        return "There are no embeds in this message"
-
+        return "**No embeds found in the provided in the message URLs.**"
 
 # Register message command
 interactions._commands["Make Embed"] = CommandData(
-    name="Make Embed",
+    name="Create a discord embed",
     cb=make_embed_context_menu,
     cmd=ApplicationCommand(
-        name="Make Embed", 
+        name="Create a discord embed", 
         description=None, 
         type=ApplicationCommandType.MESSAGE.value
     )
 )
 interactions._commands["Get Embed"] = CommandData(
-    name="Get Embed",
+    name="Get a discord embed",
     cb=get_embed_context_menu,
     cmd=ApplicationCommand(
-        name="Get Embed", 
+        name="Get a discord embed", 
+        description=None, 
+        type=ApplicationCommandType.MESSAGE.value
+    )
+)
+interactions._commands["Create a video embed"] = CommandData(
+    name="Create a video embed",
+    cb=create_video_embed,
+    cmd=ApplicationCommand(
+        name="Create a video embed", 
         description=None, 
         type=ApplicationCommandType.MESSAGE.value
     )
 )
 if __name__ == "__main__":
-    interactions.run("0.0.0.0", os.getenv("PORT", 443))
+    interactions.run("0.0.0.0", os.getenv("PORT", 80))
