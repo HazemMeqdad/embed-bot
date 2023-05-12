@@ -12,15 +12,18 @@ from discord_interactions import (
     ApplicationCommandType,
     ApplicationCommand
 )
-from utlits import compiler_json_data
+from utlits import compiler_json_data, video_compiler_json
 from database.client import UrlsDatabase
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except:
     pass
-
-interactions = App(os.environ['CLIENT_PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True)
+import requests
+from bs4 import BeautifulSoup
+import re
+import json
+interactions = App(os.environ['PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True, token=os.environ['TOKEN'])
 
 @interactions.command
 def ping(cmd: commands.Ping):
@@ -43,12 +46,24 @@ def create(ctx: Context):
 def create_embed(data: str, code: str):
     code = code if code else random_code()
     if not data:
-        return "Please give me a data, use this site https://discohook.org/ to make a embed data\nCopy only one embed Just"
+        return "**Please provide a valid JSON data or use the website \"https://discohook.org/\" to generate a single embed.**"
     clean_code = compiler_json_data(data)
     if clean_code is False:
-        return "This data is not a json Or wrong embed data"
+        return "**Invalid JSON data or incorrect embedded JSON format detected**"
     if UrlsDatabase.get_url(code):
-        return "This url already exists"
+        return "**This url with code || {} || already exists**".format(code)
+    UrlsDatabase.push_url(clean_code, code)
+    return os.getenv("HOST") + code
+
+def create_video_embed_data(data: str, code: str):
+    code = code if code else random_code()
+    if not data:
+        return "**Please provide a valid JSON data with this keys.**\n **[\'`title`\', \'`description`\', \'`video`\', \'`width`\', \'`height`\' \'`image`\']**"
+    clean_code = video_compiler_json(data)
+    if clean_code is False:
+        return "**Invalid JSON data or incorrect embedded JSON format detected use this keys to make a vaild data**\n **[\'`title`\', \'`description`\', \'`video`\', \'`width`\', \'`height`\' \'`image`\']**"
+    if UrlsDatabase.get_url(code):
+        return "**This url with code || {} || already exists**".format(code)
     UrlsDatabase.push_url(clean_code, code)
     return os.getenv("HOST") + code
 
@@ -85,21 +100,100 @@ def help(ctx: Context):
         ),
     )
 
+
 def make_embed_context_menu(ctx: Context):
     code = random_code()
     data = list(ctx.interaction.data.resolved.messages.values())[0].content
-    return create_embed(data, code)
+    return 
+
+def create_video_embed(ctx: Context):
+    code = random_code()
+    data = list(ctx.interaction.data.resolved.messages.values())[0].content
+    return create_video_embed_data(data=data, code=code)
+
+def get_embed_context_menu(ctx: Context):
+    print("Start")
+    message = list(ctx.interaction.data.resolved.messages.values())[0].content
+    if not message:
+        return "No message content"
+    url_pattern = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\)])+(?<![),]))"
+    urls = re.findall(url_pattern, message)
+    embed_list = []
+    for url in urls:
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                title_tag = soup.find("meta", property="og:title")
+                title = title_tag["content"] if title_tag else None
+
+                image_tag = soup.find("meta", property="og:image")
+                image = image_tag["content"] if image_tag else None
+
+                url_tag = soup.find("meta", property="og:url")
+                url_ = url_tag["content"] if url_tag else None
+
+                description_tag = soup.find("meta", property="og:description")
+                description = description_tag["content"] if description_tag else None
+
+                author_tag = soup.find("meta", property="og:site_name")
+                author = author_tag["content"] if author_tag else None
+
+                color_tag = soup.find("meta", property="theme-color")
+                print(color_tag)
+                color = color_tag["content"] if color_tag else 0
+
+                if title or image or url_ or description or author or color:
+                    embed_data = {
+                        "title": title,
+                        "url": url_,
+                        "description": description,
+                        "author": {
+                            "name": author
+                        },
+                        "color": color,
+                        "image": {
+                            "url": image
+                        }
+                    }
+                    embed_list.append(embed_data)
+        except (requests.RequestException, KeyError):
+            print(f"Error occurred while fetching embed information for {url}")
+
+    if embed_list:
+        json_data = json.dumps(embed_list, indent=4) #Make it easy to Read 
+        code_block = "```json\n" + json_data + "\n```"
+        return code_block
+    else:
+        return "**No embeds found in the provided in the message URLs.**"
 
 # Register message command
 interactions._commands["Make Embed"] = CommandData(
-    name="Make Embed",
+    name="Create a discord embed",
     cb=make_embed_context_menu,
     cmd=ApplicationCommand(
-        name="Make Embed", 
+        name="Create a discord embed", 
         description=None, 
         type=ApplicationCommandType.MESSAGE.value
     )
 )
-
+interactions._commands["Get Embed"] = CommandData(
+    name="Get a discord embed",
+    cb=get_embed_context_menu,
+    cmd=ApplicationCommand(
+        name="Get a discord embed", 
+        description=None, 
+        type=ApplicationCommandType.MESSAGE.value
+    )
+)
+interactions._commands["Create a video embed"] = CommandData(
+    name="Create a video embed",
+    cb=create_video_embed,
+    cmd=ApplicationCommand(
+        name="Create a video embed", 
+        description=None, 
+        type=ApplicationCommandType.MESSAGE.value
+    )
+)
 if __name__ == "__main__":
     interactions.run("0.0.0.0", os.getenv("PORT", 80))
