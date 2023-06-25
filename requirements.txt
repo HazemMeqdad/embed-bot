@@ -1,2 +1,6 @@
 flask
 git+https://github.com/HazemMeqdad/discord-interactions.py.git
+bs4
+jsonschema
+Pillow
+beautifulsoup4
