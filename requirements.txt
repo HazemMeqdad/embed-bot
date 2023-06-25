@@ -4,3 +4,4 @@ bs4
 jsonschema
 Pillow
 beautifulsoup4
+webcolors

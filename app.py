@@ -16,7 +16,7 @@ from discord_interactions import (
 )
 from handler import App, Embed
 import commands
-from utlits import json_compiler, videoSchema, embed_schema
+from utlits import json_compiler, videoSchema, embed_schema, convert_theme_color_to_int
 from database.client import UrlsDatabase
 
 try:
@@ -24,6 +24,7 @@ try:
     load_dotenv()
 except:
     pass
+from jsonschema import validate, ValidationError
 
 interactions = App(os.environ['PUBLIC_KEY'], os.environ['APPLICATION_ID'], debug=True, token=os.environ['TOKEN'])
 
@@ -116,13 +117,23 @@ def create_video_embed(ctx: Context):
     data = list(ctx.interaction.data.resolved.messages.values())[0].content
     return create_video_embed_data(data=data, code=code)
 
+def validate_schema(data, schema):
+    try:
+        validate(data, schema)
+        return data
+    except ValidationError as e:
+        print(f"Validation Error: {e}")
+        return None
+
 def get_embed_context_menu(ctx: Context):
     message = list(ctx.interaction.data.resolved.messages.values())[0].content
     if not message:
         return "No message content"
+
     url_pattern = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\)])+(?<![),]))"
     urls = re.findall(url_pattern, message)
     embed_list = []
+
     for url in urls:
         try:
             response = requests.get(url)
@@ -143,33 +154,44 @@ def get_embed_context_menu(ctx: Context):
                 author_tag = soup.find("meta", property="og:site_name")
                 author = author_tag["content"] if author_tag else None
 
-                color_tag = soup.find("meta", property="theme-color")
-                print(color_tag)
-                color = color_tag["content"] if color_tag else 0
-
+                color_tag = soup.find("meta", attrs={"name": "theme-color"})
+                color = color_tag["content"] if color_tag else None
+                int_color = convert_theme_color_to_int(color)
                 if title or image or url_ or description or author or color:
-                    embed_data = {
-                        "title": title,
-                        "url": url_,
-                        "description": description,
-                        "author": {
-                            "name": author
-                        },
-                        "color": color,
-                        "image": {
-                            "url": image
+                    if "video" in url:
+                        embed_data = {
+                            "title": title,
+                            "description": description,
+                            "video": url_,
+                            "width": "640",
+                            "height": "480",
+                            "image": image
                         }
-                    }
-                    embed_list.append(embed_data)
+                        embed_data = validate_schema(embed_data, videoSchema)
+                    else:
+                        embed_data = {
+                            "title": title,
+                            "description": description,
+                            "url": url_,
+                            "color": int_color,
+                            "image": {
+                                "url": image
+                            }
+                        }
+                        embed_data = validate_schema(embed_data, embed_schema)
+
+                    if embed_data:
+                        embed_list.append(embed_data)
         except (requests.RequestException, KeyError):
             print(f"Error occurred while fetching embed information for {url}")
 
     if embed_list:
-        json_data = json.dumps(embed_list, indent=4) #Make it easy to read
+        json_data = json.dumps(embed_list, indent=4)  # Make it easy to read
         code_block = "```json\n" + json_data + "\n```"
         return code_block
     else:
         return "**No embeds found in the provided message URLs.**"
+
 
 # Register message command
 interactions._commands["Create a discord embed"] = CommandData(
