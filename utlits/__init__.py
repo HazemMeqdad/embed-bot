@@ -7,7 +7,6 @@ def int_to_hex(color_int):
         return '#000000' 
     else:
         return f"#{color_int:06X}"
-
 def convert_theme_color_to_int(theme_color):
     try:
         if theme_color.startswith("#"):
