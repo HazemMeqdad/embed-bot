@@ -8,12 +8,7 @@ def int_to_hex(color_int):
 def convert_theme_color_to_int(theme_color):
     try:
         if theme_color.startswith("#"):
-            theme_color = theme_color[1:]  # Remove the '#' prefix if present
-            if len(theme_color) == 6:
-                theme_color = theme_color.lower()  # Convert to lowercase
-                rgb_color = webcolors.hex_to_rgb(theme_color)
-            else:
-                rgb_color = webcolors.hex_to_rgb(theme_color + "FF")
+            rgb_color = webcolors.hex_to_rgb(theme_color)
         elif theme_color.startswith("rgb(") or theme_color.startswith("rgba("):
             color_values = re.findall(r'\d+', theme_color)
             rgb_color = tuple(int(value) for value in color_values[:3])
@@ -24,7 +19,6 @@ def convert_theme_color_to_int(theme_color):
         return intColor
     except (ValueError, AttributeError):
         return None
-
 def test_convert_theme_color_to_int():
     assert convert_theme_color_to_int("#FFFFFF") == 16777215
     assert convert_theme_color_to_int("#000000") == 0
