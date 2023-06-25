@@ -20,6 +20,7 @@ def convert_theme_color_to_int(theme_color):
         return intColor
     except (ValueError, AttributeError):
         return None
+    return None
 
 def test_convert_theme_color_to_int():
     assert convert_theme_color_to_int("#FFFFFF") == 16777215

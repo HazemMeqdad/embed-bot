@@ -22,3 +22,4 @@ def convert_theme_color_to_int(theme_color):
         return intColor
     except (ValueError, AttributeError):
         return None
+    return None
