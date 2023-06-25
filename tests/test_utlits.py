@@ -10,6 +10,7 @@ def convert_theme_color_to_int(theme_color):
         if theme_color.startswith("#"):
             theme_color = theme_color[1:]  # Remove the '#' prefix if present
             if len(theme_color) == 6:
+                theme_color = theme_color.lower()  # Convert to lowercase
                 rgb_color = webcolors.hex_to_rgb(theme_color)
             else:
                 rgb_color = webcolors.hex_to_rgb(theme_color + "FF")
