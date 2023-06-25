@@ -9,10 +9,16 @@ class CreateEmbed(SubCommand):
     name = "embed"
     data: str = Option("Enter json data", type=ApplicationCommandOptionType.STRING)
     code: bool = Option("If you want to add custom code", type=ApplicationCommandOptionType.STRING, required=False)
+class CreateVideo(SubCommand):
+    """ create a embed url it host on bot server """
+    name = "video"
+    data: str = Option("Enter json data", type=ApplicationCommandOptionType.STRING)
+    code: bool = Option("If you want to add custom code", type=ApplicationCommandOptionType.STRING, required=False)
 
 class Create(Command):
     """ Embed command """
     embed: str = CreateEmbed()
+    video: str = CreateVideo()
 
 class Help(Command):
     """Show all commands and sub commands bot used it"""
