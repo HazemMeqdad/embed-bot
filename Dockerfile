@@ -1,12 +1,23 @@
-FROM python:3.11
+FROM python:3.9
 
-COPY . /app
 WORKDIR /app
 
-RUN pip install -r requirements.txt
+COPY requirements.txt .
 
-ENV FLASK_ENV="production"
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 80
+COPY . .
 
-ENTRYPOINT ["python", "./app.py"]
+RUN pip install python-dotenv
+
+ENV TOKEN="discord token"
+ENV HOST="your host link"
+ENV PUBLIC_KEY="your discord bot key"
+ENV APPLICATION_ID="your discord bot it"
+ENV PORT="your host port"
+
+RUN if [ -f .env ]; then python -m dotenv .env; fi
+
+RUN python register_commands.py
+
+CMD ["python", "app.py"]
