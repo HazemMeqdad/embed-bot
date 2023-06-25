@@ -1,5 +1,7 @@
 # Embed bot
-Discord bot host your custom embed on url `<\>`
+The Discord bot generates links when they are sent to a website displaying information in the form of a card `Embed Card`
+</br>
+`<\>`
 
 ## Installation
 1. Clone this repository `git clone https://github.com/HazemMeqdad/embed-bot.git`
