@@ -1,29 +1,26 @@
 from flask import Flask
 from discord_interactions.flask_ext import Interactions
-from database.client import UrlsDatabase
-## uncomment this if you wanna use your own ssl made by certbot 
-## if you wanna to generate one use this command in your ubuntu server
-## sudo certbot certonly --standalone -d kmcoders.com 
-## replace kmcoders with your own domain 
-# import ssl
-# context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-# context.load_cert_chain('/etc/letsencrypt/live/kmcoders.com-0001/fullchain.pem', '/etc/letsencrypt/live/kmcoders.com-0001/privkey.pem')
-import json
-# i try to use all otg meta code i stil work on it 
-import json
-import requests 
+import jsonschema
+import requests
 from PIL import Image
 import io
-import jsonschema
-from utlits import videoSchema
-
-int_to_hex = lambda x: '#{0:06X}'.format(x)
-
+from utlits import int_to_hex, videoSchema, embed_schema
+from database.client import UrlsDatabase
+app = Flask(__name__)
 
 class App(Interactions):
-    app = Flask(__name__)
     def __init__(self, client_public_key: str, application_id: str, *args, **kwargs):
-        super().__init__(App.app, client_public_key, path="/interactions", app_id=application_id)
+        super().__init__(app, client_public_key, path="/interactions", app_id=application_id)
+
+    @staticmethod
+    def get_image_dimensions(url):
+        try:
+            response = requests.get(url)
+            img_data = io.BytesIO(response.content)
+            image = Image.open(img_data)
+            return image.width, image.height
+        except:
+            return None, None
 
     @staticmethod
     def get_image_dimensions(url):
@@ -55,13 +52,11 @@ class App(Interactions):
             html_code += '<meta property="og:type" content="video" />\n'
             html_code += '<meta property="og:title" content="{}" />\n'.format(videodata["title"])
             html_code += '<meta property="og:description" content="{}" />\n'.format(videodata["description"])
-            html_code += '<meta property="og:video" content="{} />\n'.format(videodata["video"])
+            html_code += '<meta property="og:video" content="{}" />\n'.format(videodata["video"])
             html_code += '<meta property="og:video:width" content="{}">\n'.format(videodata["width"])
             html_code += '<meta property="og:video:height" content="{}">\n'.format(videodata["height"])
             html_code += '<meta property="og:image" content="{}" />\n'.format(videodata["image"])
-
             return html_code
-
         except:
             html_code = "<meta name=\"twitter:card\" content=\"summary_large_image\">\n"
             html_code += "<meta property=\"og:type\" content=\"object\">\n"
@@ -84,13 +79,14 @@ class App(Interactions):
                 if image_width and image_height:
                     html_code += "<meta property=\"og:image:width\" content=\"{}\">\n".format(image_width)
                     html_code += "<meta property=\"og:image:height\" content=\"{}\">\n".format(image_height)
-                html_code += "<meta property=\"og:image:alt\" content=\"{}\">\n".format(embed_data.get("description", "kmcoders"))
+                html_code += "<meta property=\"og:image:alt\" content=\"{}\">\n".format(
+                    embed_data.get("description", "kmcoders")
+                )
+
             if "author" in embed_data and isinstance(embed_data["author"], dict) and "name" in embed_data["author"]:
                 html_code += "<meta property=\"og:site_name\" content=\"{}\">\n".format(embed_data["author"]["name"])
                 html_code += "<meta name=\"twitter:site\" content=\"{}\">\n".format(embed_data["author"]["name"])
             return html_code
-
     def run(self, *args, **kwargs):
-        # App.app.run(ssl_context=context, *args, **kwargs)
-        App.app.run(*args, **kwargs)
+        app.run(*args, **kwargs)
 
